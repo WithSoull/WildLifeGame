@@ -172,3 +172,7 @@ map<string, string> hm = {
 string which_object(int x, int y){
     return hm[screen[x][y]];
 }
+
+string get_pixel(int i, int j){
+    return screen[i][j];
+}

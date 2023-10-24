@@ -15,9 +15,9 @@
 
 using namespace std;
 
-const double PRC_START_PRED = 0.004;
-const double PRC_START_HERB = 0.2;
-const double PRC_START_NATURE = 0.0;
+const double PRC_START_PRED = 0.005;
+const double PRC_START_HERB = 0.035;
+const double PRC_START_NATURE = 0.1;
 
 
 int main() {
@@ -32,16 +32,16 @@ int main() {
 //    count_pred;
 
     srand(time(0));
-    start();
+//    start();
     sleep(1);
     fill_screen_empty();
     set_start_animals(count_pred, count_herb, count_nature);
     update_screen();
     sleep(1);
-    for (int i = 0; i < 100; i++){
+    for (;;){
         life_tick();
         update_screen();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
 }

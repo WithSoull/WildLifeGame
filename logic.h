@@ -14,10 +14,13 @@ struct object {
     int hp;
     int age;
     std::string emodji;
+    std::string last_step_emodji = "  ";
     int max_age;
     int time_sex;
     int vision;
     int speed;
+    int last_x = x;
+    int last_y = y;
 };
 
 void life_tick();
