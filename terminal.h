@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 #include "logic.h"
 
 void build_text(struct ascii_image asciiImage);
@@ -18,13 +19,9 @@ void start();
 
 void change_pixel(int x, int y, std::string symbol);
 
-void update_objects(std::vector<struct object> objs);
-
 void update_last_object(object obj);
 
-std::string which_object(int x, int y);
-
-void update_objects(std::vector<struct object> objs);
+void update_objects(std::map<std::string, std::vector<struct object>> objs);
 
 bool screen_place_is_empty(int x, int y);
 

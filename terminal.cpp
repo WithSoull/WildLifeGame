@@ -142,8 +142,14 @@ void change_pixel(int x, int y, string symbol){
 }
 
 
-void update_objects(vector<struct object> objs){
-    for (const auto& obj : objs)
+void update_objects(map<string, vector<struct object>> objs){
+    screen.clear();
+    fill_screen_empty();
+    for (const auto& obj : objs["nature"])
+        change_pixel(obj.x, obj.y, obj.emodji);
+    for (const auto& obj : objs["herb"])
+        change_pixel(obj.x, obj.y, obj.emodji);
+    for (const auto& obj : objs["pred"])
         change_pixel(obj.x, obj.y, obj.emodji);
 }
 
@@ -166,12 +172,9 @@ map<string, string> hm = {
         {"🦁", "pred"},
         {"🐯", "pred"},
         {"🌿", "nature"},
-        {"🌾", "nature"}
+        {"🌾", "nature"},
+        {"  ", "empty"}
 };
-
-string which_object(int x, int y){
-    return hm[screen[x][y]];
-}
 
 string get_pixel(int i, int j){
     return screen[i][j];

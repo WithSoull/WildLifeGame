@@ -17,9 +17,11 @@ int random_number(int a, int b) {
     return a + rand() % (b - a + 1);
 }
 
-// std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-vector<struct object> objects;
+map<string, vector<struct object>> objects = {
+        {"herb", vector<struct object> {}},
+        {"pred", vector<struct object> {}},
+        {"nature", vector<struct object> {}},
+};
 
 void move_objects();
 
@@ -39,15 +41,14 @@ int get_obj(int x, int y);
 
 void paint_square(object &object, int v);
 
-//"🦁🐯 🐐🌱"🌾""🌿"   🐮🐷"
 void set_start_animals(int pred, int herb, int grass) {
 
     // pred
     for (int i = 0; i < pred; i++) {
         object new_pred;
         new_pred.type = "pred";
-        new_pred.vision = 3;
-        new_pred.speed = 2;
+        new_pred.vision = 25;
+        new_pred.speed = 10;
 
         set_random_free_coords(new_pred);
         update_last_object(new_pred);
@@ -58,7 +59,7 @@ void set_start_animals(int pred, int herb, int grass) {
             new_pred.emodji = "🐯";
         }
 
-        objects.push_back(new_pred);
+        objects["pred"].push_back(new_pred);
     }
 
     // herb
@@ -77,7 +78,7 @@ void set_start_animals(int pred, int herb, int grass) {
             new_herb.emodji = "🐷";
         }
 
-        objects.push_back(new_herb);
+        objects["herb"].push_back(new_herb);
     }
 
     // nature
@@ -96,9 +97,7 @@ void set_start_animals(int pred, int herb, int grass) {
         }
 
 
-//        new_nature.emodji = "☁ ";
-
-        objects.push_back(new_nature);
+        objects["nature"].push_back(new_nature);
     }
 
     update_objects(objects);
@@ -122,6 +121,7 @@ void life_tick() {
     respawn_grass();
     update_age();
     age_death();
+    update_objects(objects);
 }
 
 
@@ -138,16 +138,13 @@ void respawn_grass() {
 }
 
 void move_objects() {
-    for (int i = 0; i < objects.size(); i++) {
-        if (objects[i].type == "pred") {
-            move_pred(i);
-        }
+    for (int i = 0; i < objects["pred"].size(); i++) {
+        move_pred(i);
     }
 }
 
 void move_pred(int index) {
-    object &pred = objects[index];
-    int fx = pred.x, fy = pred.y;
+    object &pred = objects["pred"][index];
     int v = pred.vision;
     int d = pred.speed;
 
@@ -159,11 +156,11 @@ void move_pred(int index) {
         if (move == true) break;
         for (int j = hy; j <= ly; ++j) {
             if (!(i == pred.x && j == pred.y)) {
-                if (which_object(i, j) == "herb") {
-                    int k = get_obj(i, j);
+                if (is_object_this_type(i, j, "herb")) {
+                    int k = get_obj(i, j, "herb");
                     move = true;
-                    pred.hp += objects[k].hp;
-                    objects.erase(objects.begin() + k);
+                    pred.hp += objects["herb"][k].hp;
+                    objects["herb"].erase(objects["herb"].begin() + k);
                     pred.x = i;
                     pred.y = j;
                     break;
@@ -171,7 +168,6 @@ void move_pred(int index) {
             }
         }
     }
-
     int herb_index = -1;
     if (!move) {
         get_near_coords(pred, v, hx, hy, lx, ly);
@@ -181,9 +177,8 @@ void move_pred(int index) {
         int herb_min_distance = 1000000;
         for (int i = hx; i <= lx; i++) {
             for (int j = hy; j <= ly; ++j) {
-                if (which_object(i, j) == "herb") {
-                    cout << i << " " << j << "\n";
-                    int curi = get_obj(i, j);
+                if (is_object_this_type(i, j, "herb")) {
+                    int curi = get_obj(i, j, "herb");
                     int curd2 = (i - pred.x) * (i - pred.x) + (j - pred.y) * (j - pred.y);
 
                     if (herb_min_distance > curd2) {
@@ -191,8 +186,8 @@ void move_pred(int index) {
                         herb_min_distance = curd2;
 
                     } else if (herb_min_distance == curd2) {
-                        int hp1 = objects[herb_index].hp;
-                        int hp2 = objects[curi].hp;
+                        int hp1 = objects["herb"][herb_index].hp;
+                        int hp2 = objects["herb"][curi].hp;
                         if (hp1 < hp2) {
                             herb_index = curi;
                         }
@@ -205,21 +200,13 @@ void move_pred(int index) {
     }
     get_near_coords(pred, d, hx, hy, lx, ly);
     if (herb_index == -1 && !move) {
-
-        cout << "Жертвы нет, рандомный ход Наступил на: ";
-
         pred.x = random_number(hx, lx);
         pred.y = random_number(ly, hy);
-        pred.last_step_emodji = get_pixel(pred.x, pred.y);
-
-        cout << pred.last_step_emodji << "\n";
 
     } else if (herb_index > -1) {
         // Ищем позицию для льва чтобы встать ближе к корму :)
 
-        cout << "Жертвы где-то рядом. ";
-
-        int x = objects[herb_index].x, y = objects[herb_index].y;
+        int x = objects["herb"][herb_index].x, y = objects["herb"][herb_index].y;
         int mindist = 1000;
         for (int i = hx; i <= lx; i++) {
             for (int j = hy; j <= ly; ++j) {
@@ -231,12 +218,7 @@ void move_pred(int index) {
                 }
             }
         }
-
-        cout << "Лучшая позиция: " << x << " " << y << "\n";
     }
-
-    change_pixel(fx, fy, pred.last_step_emodji);
-    change_pixel(pred.x, pred.y, pred.emodji);
 }
 
 void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly) {
@@ -250,9 +232,9 @@ void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly) {
     ly = min(tly, obj.y + v);
 }
 
-int get_obj(int x, int y) {
-    for (int i = 0; i < objects.size(); i++) {
-        object el = objects[i];
+int get_obj(int x, int y, string type) {
+    for (int i = 0; i < objects[type].size(); i++) {
+        object el = objects[type][i];
         if (el.x == x && el.y == y) {
             return i;
         }
@@ -260,6 +242,18 @@ int get_obj(int x, int y) {
     return -1;
 }
 
+bool is_object_this_type(int x, int y, string type){
+    for (int i = 0; i < objects[type].size(); i++) {
+        object el = objects[type][i];
+        if (el.x == x && el.y == y){
+            return true;
+        }
+    }
+    return false;
+}
+
 void move_herb(object &herb) {
 
 }
+
+

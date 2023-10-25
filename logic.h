@@ -14,15 +14,16 @@ struct object {
     int hp;
     int age;
     std::string emodji;
-    std::string last_step_emodji = "  ";
     int max_age;
     int time_sex;
     int vision;
     int speed;
-    int last_x = x;
-    int last_y = y;
 };
 
 void life_tick();
 void move_pred(int i);
 void move_objects();
+
+int get_obj(int x, int y, std::string type);
+
+bool is_object_this_type(int x, int y, std::string type);
