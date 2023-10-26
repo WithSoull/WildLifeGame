@@ -39,7 +39,6 @@ void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly);
 
 int get_obj(int x, int y);
 
-void paint_square(object &object, int v);
 
 void set_start_animals(int pred, int herb, int grass) {
 
@@ -47,8 +46,8 @@ void set_start_animals(int pred, int herb, int grass) {
     for (int i = 0; i < pred; i++) {
         object new_pred;
         new_pred.type = "pred";
-        new_pred.vision = 25;
-        new_pred.speed = 10;
+        new_pred.vision = 5;
+        new_pred.speed = 3;
 
         set_random_free_coords(new_pred);
         update_last_object(new_pred);
@@ -72,10 +71,13 @@ void set_start_animals(int pred, int herb, int grass) {
         set_random_free_coords(new_herb);
         update_last_object(new_herb);
 
-        if (random_number(1, 2) % 2 == 0) {
+        int r = random_number(1, 3);
+        if (r % 3 == 0) {
             new_herb.emodji = "🐮";
-        } else {
+        } else if (r % 3 == 1) {
             new_herb.emodji = "🐷";
+        } else {
+            new_herb.emodji = "🐐";
         }
 
         objects["herb"].push_back(new_herb);
