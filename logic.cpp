@@ -11,16 +11,16 @@
 using namespace std;
 
 int random_number(int a, int b) {
-    if (a > b){
+    if (a > b) {
         swap(a, b);
     }
     return a + rand() % (b - a + 1);
 }
 
 map<string, vector<struct object>> objects = {
-        {"herb", vector<struct object> {}},
-        {"pred", vector<struct object> {}},
-        {"nature", vector<struct object> {}},
+        {"herb",   vector<struct object>{}},
+        {"pred",   vector<struct object>{}},
+        {"nature", vector<struct object>{}},
 };
 
 void move_objects();
@@ -151,65 +151,43 @@ void move_pred(int index) {
     int d = pred.speed;
 
     int hx, hy, lx, ly;
-    get_near_coords(pred, d, hx, hy, lx, ly);
+    get_near_coords(pred, v, hx, hy, lx, ly);
 
-    bool move = false;
+    pair<int, int> closed_herb;
+    int min_distance = 10000000;
+
     for (int i = hx; i <= lx; i++) {
-        if (move == true) break;
         for (int j = hy; j <= ly; ++j) {
             if (!(i == pred.x && j == pred.y)) {
                 if (is_object_this_type(i, j, "herb")) {
-                    int k = get_obj(i, j, "herb");
-                    move = true;
-                    pred.hp += objects["herb"][k].hp;
-                    objects["herb"].erase(objects["herb"].begin() + k);
-                    pred.x = i;
-                    pred.y = j;
-                    break;
-                }
-            }
-        }
-    }
-    int herb_index = -1;
-    if (!move) {
-        get_near_coords(pred, v, hx, hy, lx, ly);
+                    int current_distance = max(abs(pred.x - i), abs(pred.y - j));
+                    if (min_distance > current_distance) {
+                        closed_herb.first = i;
+                        closed_herb.second = j;
 
-        // Ищем жертву которая ближе всего к нам
-
-        int herb_min_distance = 1000000;
-        for (int i = hx; i <= lx; i++) {
-            for (int j = hy; j <= ly; ++j) {
-                if (is_object_this_type(i, j, "herb")) {
-                    int curi = get_obj(i, j, "herb");
-                    int curd2 = (i - pred.x) * (i - pred.x) + (j - pred.y) * (j - pred.y);
-
-                    if (herb_min_distance > curd2) {
-                        herb_index = curi;
-                        herb_min_distance = curd2;
-
-                    } else if (herb_min_distance == curd2) {
-                        int hp1 = objects["herb"][herb_index].hp;
-                        int hp2 = objects["herb"][curi].hp;
-                        if (hp1 < hp2) {
-                            herb_index = curi;
-                        }
+                        min_distance = current_distance;
                     }
                 }
             }
         }
-
-
     }
-    get_near_coords(pred, d, hx, hy, lx, ly);
-    if (herb_index == -1 && !move) {
-        pred.x = random_number(hx, lx);
-        pred.y = random_number(ly, hy);
 
-    } else if (herb_index > -1) {
-        // Ищем позицию для льва чтобы встать ближе к корму :)
+    // Кушаем
+    if (min_distance <= d) {
+        int herb_index = get_obj(closed_herb.first, closed_herb.second, "herb");
+        pred.hp += objects["herb"][herb_index].hp;
+        objects["herb"].erase(objects["herb"].begin() + herb_index);
+        pred.x = closed_herb.first;
+        pred.y = closed_herb.second;
 
+    // Видим и подходим ближе
+    } else if (min_distance <= v) {
+        int herb_index = get_obj(closed_herb.first, closed_herb.second, "herb");
         int x = objects["herb"][herb_index].x, y = objects["herb"][herb_index].y;
-        int mindist = 1000;
+
+
+        get_near_coords(pred, v, hx, hy, lx, ly);
+        int mindist = 10000000;
         for (int i = hx; i <= lx; i++) {
             for (int j = hy; j <= ly; ++j) {
                 int curd2 = (i - x) * (i - x) + (j - y) * (j - y);
@@ -220,6 +198,17 @@ void move_pred(int index) {
                 }
             }
         }
+
+    // Никого не видим ходим рандомно
+    } else {
+        get_near_coords(pred, v, hx, hy, lx, ly);
+
+        int i, j;
+        do {
+            i = random_number(hx, lx), j = random_number(hy, ly);
+        } while (is_object_this_type(i, j, "pred"));
+
+        pred.x = i, pred.y = j;
     }
 }
 
@@ -244,10 +233,10 @@ int get_obj(int x, int y, string type) {
     return -1;
 }
 
-bool is_object_this_type(int x, int y, string type){
+bool is_object_this_type(int x, int y, string type) {
     for (int i = 0; i < objects[type].size(); i++) {
         object el = objects[type][i];
-        if (el.x == x && el.y == y){
+        if (el.x == x && el.y == y) {
             return true;
         }
     }
