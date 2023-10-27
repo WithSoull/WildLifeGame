@@ -52,11 +52,21 @@ void build_fence() {
         screen[0][i] = fence_horizontal;
         screen[X - 1][i] = fence_horizontal;
     }
+
+//    for (int i = 0; i < X; ++i) {
+//        screen[i][0] = (i < 10) ? " " + to_string(i) : to_string(i);
+//        screen[i][Y - 1] = fence_vertical_right;
+//    }
+//
+//    for (int i = 0; i < Y; ++i) {
+//        screen[0][i] = (i < 10) ? " " + to_string(i) : to_string(i);
+//        screen[X - 1][i] = fence_horizontal;
+//    }
 }
 
 
 void update_screen() {
-//    system("clear");
+    system("clear");
 
     for (int i = 0; i < screen.size(); i++) {
         for (int j = 0; j < screen[i].size(); j++) {
@@ -119,7 +129,7 @@ void fill_screen_empty() {
     for (int i = 0; i < X; i++) {
         vector<string> new_row;
         for (int j = 0; j < Y; j++) {
-            new_row.push_back("  ");
+            new_row.emplace_back("  ");
         }
         screen.push_back(new_row);
     }
@@ -169,6 +179,7 @@ void update_last_object(object obj){
 map<string, string> hm = {
         {"🐮", "herb"},
         {"🐷", "herb"},
+        {"🐐", "herb"},
         {"🦁", "pred"},
         {"🐯", "pred"},
         {"🌿", "nature"},

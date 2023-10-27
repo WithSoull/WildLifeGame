@@ -7,6 +7,7 @@
 #include "terminal.h"
 #include <cmath>
 #include <map>
+#include <algorithm>
 
 using namespace std;
 
@@ -22,6 +23,8 @@ map<string, vector<struct object>> objects = {
         {"pred",   vector<struct object>{}},
         {"nature", vector<struct object>{}},
 };
+
+int absolute_path_by_coords(int x, int y);
 
 void move_objects();
 
@@ -45,6 +48,7 @@ void set_start_animals(int pred, int herb, int grass) {
     // pred
     for (int i = 0; i < pred; i++) {
         object new_pred;
+        new_pred.hp = 50;
         new_pred.type = "pred";
         new_pred.vision = 5;
         new_pred.speed = 3;
@@ -64,6 +68,7 @@ void set_start_animals(int pred, int herb, int grass) {
     // herb
     for (int i = 0; i < herb; i++) {
         object new_herb;
+        new_herb.hp = 20;
         new_herb.type = "herb";
         new_herb.vision = 3;
         new_herb.speed = 1;
@@ -102,6 +107,7 @@ void set_start_animals(int pred, int herb, int grass) {
         objects["nature"].push_back(new_nature);
     }
 
+    sort_objects();
     update_objects(objects);
 }
 
@@ -147,6 +153,7 @@ void move_objects() {
 
 void move_pred(int index) {
     object &pred = objects["pred"][index];
+
     int v = pred.vision;
     int d = pred.speed;
 
@@ -180,13 +187,12 @@ void move_pred(int index) {
         pred.x = closed_herb.first;
         pred.y = closed_herb.second;
 
-    // Видим и подходим ближе
+        // Видим и подходим ближе
     } else if (min_distance <= v) {
         int herb_index = get_obj(closed_herb.first, closed_herb.second, "herb");
         int x = objects["herb"][herb_index].x, y = objects["herb"][herb_index].y;
 
-
-        get_near_coords(pred, v, hx, hy, lx, ly);
+        get_near_coords(pred, d, hx, hy, lx, ly);
         int mindist = 10000000;
         for (int i = hx; i <= lx; i++) {
             for (int j = hy; j <= ly; ++j) {
@@ -199,7 +205,7 @@ void move_pred(int index) {
             }
         }
 
-    // Никого не видим ходим рандомно
+        // Никого не видим ходим рандомно
     } else {
         get_near_coords(pred, v, hx, hy, lx, ly);
 
@@ -223,16 +229,6 @@ void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly) {
     ly = min(tly, obj.y + v);
 }
 
-int get_obj(int x, int y, string type) {
-    for (int i = 0; i < objects[type].size(); i++) {
-        object el = objects[type][i];
-        if (el.x == x && el.y == y) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 bool is_object_this_type(int x, int y, string type) {
     for (int i = 0; i < objects[type].size(); i++) {
         object el = objects[type][i];
@@ -247,4 +243,39 @@ void move_herb(object &herb) {
 
 }
 
+bool object_sort_crit(const struct object &o1, const struct object &o2) {
+    int o1_place = absolute_path_by_coords(o1.x, o1.y);;
+    int o2_place = absolute_path_by_coords(o2.x, o2.y);
+    return o1_place < o2_place;
+}
 
+void sort_objects() {
+    for (auto type: objects) {
+        sort(objects[type.first].begin(), objects[type.first].end(), object_sort_crit);
+    }
+}
+
+int get_obj(int x, int y, string type) {
+    auto v = objects[type];
+    int target = absolute_path_by_coords(x, y);
+    int l = 0, r = v.size() - 1;
+
+    while (l <= r) {
+        int m = l + (r - l) / 2;
+        int cur = absolute_path_by_coords(v[m].x, v[m].y);
+        if (cur == target)
+            return m;
+        if (cur < target)
+            l = m + 1;
+        else
+            r = m - 1;
+    }
+
+    return -1;
+}
+
+int absolute_path_by_coords(int x, int y) {
+    int X = give_terminal_size().first - 3;
+    int Y = give_terminal_size().second - 2;
+    return (x - 1) * Y + y;
+}

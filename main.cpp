@@ -15,8 +15,8 @@
 
 using namespace std;
 
-const double PRC_START_PRED = 0.003;
-const double PRC_START_HERB = 0.3;
+const double PRC_START_PRED = 0.005;
+const double PRC_START_HERB = 0.15;
 const double PRC_START_NATURE = 0.3;
 
 
@@ -24,7 +24,7 @@ int main() {
     int X = give_terminal_size().first;
     int Y = give_terminal_size().second;
     int square = (X - 3) * (Y - 2);
-    cout << square << "\n";
+
     int count_herb = (int) square * PRC_START_HERB;
     int count_pred = (int) square * PRC_START_PRED;
     int count_nature = (int) square * PRC_START_NATURE;
@@ -39,7 +39,6 @@ int main() {
     for (;;){
         life_tick();
         update_screen();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-
 }

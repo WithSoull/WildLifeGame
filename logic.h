@@ -27,3 +27,5 @@ void move_objects();
 int get_obj(int x, int y, std::string type);
 
 bool is_object_this_type(int x, int y, std::string type);
+
+void sort_objects();
