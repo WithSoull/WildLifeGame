@@ -43,30 +43,30 @@ void build_text(struct ascii_image asciiImage) {
 
 
 void build_fence() {
-    for (int i = 0; i < X; ++i) {
-        screen[i][0] = fence_vertical_left;
-        screen[i][Y - 1] = fence_vertical_right;
-    }
-
-    for (int i = 0; i < Y; ++i) {
-        screen[0][i] = fence_horizontal;
-        screen[X - 1][i] = fence_horizontal;
-    }
-
 //    for (int i = 0; i < X; ++i) {
-//        screen[i][0] = (i < 10) ? " " + to_string(i) : to_string(i);
+//        screen[i][0] = fence_vertical_left;
 //        screen[i][Y - 1] = fence_vertical_right;
 //    }
 //
 //    for (int i = 0; i < Y; ++i) {
-//        screen[0][i] = (i < 10) ? " " + to_string(i) : to_string(i);
+//        screen[0][i] = fence_horizontal;
 //        screen[X - 1][i] = fence_horizontal;
 //    }
+
+    for (int i = 0; i < X; ++i) {
+        screen[i][0] = (i < 10) ? " " + to_string(i) : to_string(i);
+        screen[i][Y - 1] = fence_vertical_right;
+    }
+
+    for (int i = 0; i < Y; ++i) {
+        screen[0][i] = (i < 10) ? " " + to_string(i) : to_string(i);
+        screen[X - 1][i] = fence_horizontal;
+    }
 }
 
 
 void update_screen() {
-    system("clear");
+//    system("clear");
 
     for (int i = 0; i < screen.size(); i++) {
         for (int j = 0; j < screen[i].size(); j++) {

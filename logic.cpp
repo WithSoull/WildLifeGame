@@ -30,9 +30,9 @@ void move_objects();
 
 void respawn_grass();
 
-void move_herb(object object1);
+void move_herb(int index);
 
-void move_pred(object &pred);
+void move_pred(int index);
 
 void update_age();
 
@@ -41,7 +41,6 @@ void age_death();
 void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly);
 
 int get_obj(int x, int y);
-
 
 void set_start_animals(int pred, int herb, int grass) {
 
@@ -149,6 +148,10 @@ void move_objects() {
     for (int i = 0; i < objects["pred"].size(); i++) {
         move_pred(i);
     }
+
+    for (int i = 0; i < objects["herb"].size(); i++) {
+        move_herb(i);
+    }
 }
 
 void move_pred(int index) {
@@ -207,7 +210,7 @@ void move_pred(int index) {
 
         // Никого не видим ходим рандомно
     } else {
-        get_near_coords(pred, v, hx, hy, lx, ly);
+        get_near_coords(pred, d, hx, hy, lx, ly);
 
         int i, j;
         do {
@@ -215,6 +218,110 @@ void move_pred(int index) {
         } while (is_object_this_type(i, j, "pred"));
 
         pred.x = i, pred.y = j;
+    }
+}
+
+void move_herb(int index) {
+    object &herb = objects["herb"][index];
+
+    int v = herb.vision;
+    int d = herb.speed;
+
+    int hx, hy, lx, ly;
+    // === Vision area ===
+    get_near_coords(herb, v, hx, hy, lx, ly);
+
+    // Добавляем в вектор всех ближайших львов
+    // Добавляем в вектор всю ближайшую траву
+    // Добавляем в вектор всю ближайшую свиней
+
+    vector<struct object> preds;
+    vector<struct object> grass;
+    vector<struct object> herbs;
+
+    for (int i = hx; i <= lx; i++) {
+        for (int j = hy; j <= ly; ++j) {
+            if (!(i == herb.x && j == herb.y)) {
+                if (is_object_this_type(i, j, "pred")) {
+                    preds.push_back(objects["pred"][get_obj(i, j, "pred")]);
+                } else if (is_object_this_type(i, j, "nature")) {
+                    grass.push_back(objects["nature"][get_obj(i, j, "nature")]);
+                } else if (is_object_this_type(i, j, "herb")) {
+                    herbs.push_back(objects["herb"][get_obj(i, j, "herb")]);
+                }
+            }
+        }
+    }
+
+    // === Walk area ===
+
+    get_near_coords(herb, d, hx, hy, lx, ly);
+
+    int max_distance_preds = 0;
+    int min_distance_nature = 1000000;
+
+    vector<pair<int, int>> the_best_positions;
+    for (int i = hx; i <= lx; i++) {
+        for (int j = hy; j <= ly; ++j) {
+            if (!is_object_this_type(i, j, "herb")) {
+                pair<int, int> curent_pos = {i, j};
+
+                int cur_distance_preds = 0;
+                for (const auto& pred : preds){
+                    cur_distance_preds += max(abs(pred.x - i), abs(pred.y - j));
+                }
+                // Находим позицию где хищники дальше всего
+                if (max_distance_preds <= cur_distance_preds) {
+                    max_distance_preds = cur_distance_preds;
+
+                    // Самое главное найти более выгодную позицую по хищникам,
+                    // поэтому сбрасываем инфу по траве
+                    min_distance_nature = 1000000;
+                    the_best_positions.clear();
+                }
+
+                // Если в этой позиции хищники дальше всего, то
+                // Ищем среди этих позиций ту, которая ближе всего к траве
+                if (max_distance_preds == cur_distance_preds){
+                    int cur_distance_nature = 0;
+                    for (const auto& nature : grass){
+                        cur_distance_nature += max(abs(nature.x - i), abs(nature.y - j));
+                    }
+
+                    // Среди позиций где хищник дальше всего, эта отличается тем,
+                    // что трава здесь ближе чем в остальных, поэтому обновляем лучшие позиции
+                    if (min_distance_nature > cur_distance_nature){
+                        min_distance_nature = cur_distance_nature;
+                        the_best_positions.clear();
+                        the_best_positions.push_back(curent_pos);
+                    // Добавляем новую, выгодную позицию
+                    } else if (min_distance_nature == cur_distance_nature){
+                        the_best_positions.push_back(curent_pos);
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto el : the_best_positions){
+        cout << el.first << " " << el.second << " | ";
+    }
+    cout << "\n";
+    // Если нет лучших позиций, животное умрет в любом случае,
+    // поэтому просто оставим его на своей позиции
+    if (the_best_positions.size() > 0) {
+        auto pos = the_best_positions[random_number(0, the_best_positions.size())];
+
+        herb.x = pos.first;
+        herb.y = pos.second;
+
+        // Если мы наступаем на траву, то кушаем ее
+        if (min_distance_nature <= d) {
+            int grass_index = get_obj(herb.x, herb.y, "nature");
+            object grass = objects["nature"][grass_index];
+            herb.hp += grass.hp;
+            objects["nature"].erase(objects["nature"].begin() + grass_index);
+        }
     }
 }
 
