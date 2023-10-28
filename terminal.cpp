@@ -11,10 +11,6 @@
 
 using namespace std;
 
-pair<int, int> give_terminal_size();
-
-
-
 /* Структуры блоки */
 const string fence_vertical_left = "| ";
 const string fence_vertical_right = " |";
@@ -157,6 +153,8 @@ void update_objects(map<string, vector<struct object>> objs){
     screen.clear();
     fill_screen_empty();
     for (const auto& obj : objs["nature"])
+        change_pixel(obj.x, obj.y, obj.emodji);
+    for (const auto& obj : objs["tombstone"])
         change_pixel(obj.x, obj.y, obj.emodji);
     for (const auto& obj : objs["herb"])
         change_pixel(obj.x, obj.y, obj.emodji);

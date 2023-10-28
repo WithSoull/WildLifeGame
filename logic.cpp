@@ -11,6 +11,13 @@
 
 using namespace std;
 
+map<string, vector<struct object>> objects = {
+        {"herb",   vector<struct object>{}},
+        {"pred",   vector<struct object>{}},
+        {"nature", vector<struct object>{}},
+        {"tombstone", vector<struct object>{}},
+};
+
 int random_number(int a, int b) {
     if (a > b) {
         swap(a, b);
@@ -18,39 +25,16 @@ int random_number(int a, int b) {
     return a + rand() % (b - a + 1);
 }
 
-map<string, vector<struct object>> objects = {
-        {"herb",   vector<struct object>{}},
-        {"pred",   vector<struct object>{}},
-        {"nature", vector<struct object>{}},
-};
-
-int absolute_path_by_coords(int x, int y);
-
-void move_objects();
-
-void respawn_grass();
-
-void move_herb(int index);
-
-void move_pred(int index);
-
-void update_age();
-
-void age_death();
-
-void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly);
-
-int get_obj(int x, int y);
-
 void set_start_animals(int pred, int herb, int grass) {
 
     // pred
     for (int i = 0; i < pred; i++) {
         object new_pred;
-        new_pred.hp = 50;
+        new_pred.hp = random_number(60, 80);
+        new_pred.max_hp = random_number(80, 120);
         new_pred.type = "pred";
-        new_pred.vision = 5;
-        new_pred.speed = 3;
+        new_pred.vision = random_number(3, 8);
+        new_pred.speed = random_number(2, 5);
 
         set_random_free_coords(new_pred);
         update_last_object(new_pred);
@@ -67,10 +51,12 @@ void set_start_animals(int pred, int herb, int grass) {
     // herb
     for (int i = 0; i < herb; i++) {
         object new_herb;
-        new_herb.hp = 20;
+        new_herb.hp = random_number(15, 25);
+        new_herb.max_hp = random_number(25, 35);
+
         new_herb.type = "herb";
-        new_herb.vision = 10;
-        new_herb.speed = 1;
+        new_herb.vision = random_number(2, 4);
+        new_herb.speed = random_number(1, 3);
 
         set_random_free_coords(new_herb);
         update_last_object(new_herb);
@@ -90,8 +76,9 @@ void set_start_animals(int pred, int herb, int grass) {
     // nature
     for (int i = 0; i < grass; i++) {
         object new_nature;
+        new_nature.hp = random_number(5, 10);
+        new_nature.max_hp = new_nature.hp;
         new_nature.type = "nature";
-        new_nature.speed = 2;
 
         set_random_free_coords(new_nature);
         update_last_object(new_nature);
@@ -105,6 +92,7 @@ void set_start_animals(int pred, int herb, int grass) {
 
         objects["nature"].push_back(new_nature);
     }
+    objects["pred"][0].emodji = "👾";
 
     sort_objects();
     update_objects(objects);
@@ -125,12 +113,29 @@ void set_random_free_coords(struct object &obj) {
 
 void life_tick() {
     move_objects();
+    hungryness();
     respawn_grass();
-    update_age();
-    age_death();
     update_objects(objects);
 }
 
+void hungryness() {
+    for (auto p: objects) {
+        for (int i = 0; i < objects[p.first].size(); ++i) {
+            auto &obj = objects[p.first][i];
+            if (p.first == "tombstone"){
+                obj.hp -= 1;
+            } else {
+                obj.hp -= obj.max_hp * 0.03;
+            }
+            if (obj.hp <= 0) {
+                objects[p.first].erase(objects[p.first].begin() + i);
+                if (p.first == "herb" || p.first == "pred"){
+                    set_tombstone(obj.x, obj.y);
+                }
+            }
+        }
+    }
+}
 
 void age_death() {
 
@@ -141,15 +146,38 @@ void update_age() {
 }
 
 void respawn_grass() {
+    double curent = (double) objects["nature"].size();
+    int X = give_terminal_size().first - 3;
+    int Y = give_terminal_size().second - 2;
+    while (curent / (double) (X * Y) < random_number(2, 12) / 100.0){
+        object new_nature;
+        new_nature.hp = random_number(5, 10);
+        new_nature.max_hp = new_nature.hp;
+        new_nature.type = "nature";
 
+        set_random_free_coords(new_nature);
+        update_last_object(new_nature);
+
+        if (random_number(1, 2) % 2 == 0) {
+            new_nature.emodji = "🌿";
+        } else {
+            new_nature.emodji = "🌾";
+        }
+        curent++;
+
+        objects["nature"].push_back(new_nature);
+    }
+    sort_objects();
 }
 
 void move_objects() {
     for (int i = 0; i < objects["pred"].size(); i++) {
+        auto pred = objects["pred"][i];
         move_pred(i);
     }
 
     for (int i = 0; i < objects["herb"].size(); i++) {
+        auto herb = objects["herb"][i];
         move_herb(i);
     }
 }
@@ -163,7 +191,7 @@ void move_pred(int index) {
     int hx, hy, lx, ly;
     get_near_coords(pred, v, hx, hy, lx, ly);
 
-    pair<int, int> closed_herb;
+    pair<int, int> closed_herb = {-1, -1};
     int min_distance = 10000000;
 
     for (int i = hx; i <= lx; i++) {
@@ -183,15 +211,16 @@ void move_pred(int index) {
     }
 
     // Кушаем
-    if (min_distance <= d) {
+    if ((min_distance <= d) && (pred.hp / pred.max_hp < 0.8)) {
         int herb_index = get_obj(closed_herb.first, closed_herb.second, "herb");
         pred.hp += objects["herb"][herb_index].hp;
         objects["herb"].erase(objects["herb"].begin() + herb_index);
         pred.x = closed_herb.first;
         pred.y = closed_herb.second;
+        set_tombstone(pred.x, pred.y);
 
         // Видим и подходим ближе
-    } else if (min_distance <= v) {
+    } else if ((min_distance <= v) && (pred.hp / pred.max_hp < 0.8)) {
         int herb_index = get_obj(closed_herb.first, closed_herb.second, "herb");
         int x = objects["herb"][herb_index].x, y = objects["herb"][herb_index].y;
 
@@ -218,6 +247,12 @@ void move_pred(int index) {
         } while (is_object_this_type(i, j, "pred"));
 
         pred.x = i, pred.y = j;
+        int herb_index = get_obj(i, j, "herb");
+        if (herb_index > -1) {
+            pred.hp += objects["herb"][herb_index].hp;
+            objects["herb"].erase(objects["herb"].begin() + herb_index);
+            set_tombstone(i, j);
+        }
     }
 }
 
@@ -280,8 +315,8 @@ void move_herb(int index) {
                     the_best_positions = {curent_pos};
                 }
 
-                // Если в этой позиции хищники дальше всего, то
-                // Ищем среди этих позиций ту, которая ближе всего к траве
+                    // Если в этой позиции хищники дальше всего, то
+                    // Ищем среди этих позиций ту, которая ближе всего к траве
                 else if (max_distance_preds == cur_distance_preds) {
                     int cur_distance_nature = 0;
                     for (const auto &nature: grass) {
@@ -289,7 +324,7 @@ void move_herb(int index) {
                     }
 
                     // Если можем встать на траву, встаем
-                    if (is_object_this_type(i, j, "nature")){
+                    if (is_object_this_type(i, j, "nature") && (herb.hp / herb.max_hp < 0.8)) {
                         cur_distance_nature = 0;
                     }
 
@@ -340,14 +375,10 @@ void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly) {
 }
 
 bool is_object_this_type(int x, int y, string type) {
-    if (get_obj(x, y, type) > -1){
+    if (get_obj(x, y, type) > -1) {
         return true;
     }
     return false;
-}
-
-void move_herb(object &herb) {
-
 }
 
 bool object_sort_crit(const struct object &o1, const struct object &o2) {
@@ -385,4 +416,13 @@ int absolute_path_by_coords(int x, int y) {
     int X = give_terminal_size().first - 3;
     int Y = give_terminal_size().second - 2;
     return (x - 1) * Y + y;
+}
+
+void set_tombstone(int i, int j){
+    object tomb;
+    tomb.x = i;
+    tomb.y = j;
+    tomb.hp = 5;
+    tomb.emodji = "☠ ";
+    objects["tombstone"].push_back(tomb);
 }
