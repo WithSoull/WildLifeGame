@@ -15,9 +15,9 @@
 
 using namespace std;
 
-const double PRC_START_PRED = 0.0;
-const double PRC_START_HERB = 0.004;
-const double PRC_START_NATURE = 0.1;
+const double PRC_START_PRED = 0.01;
+const double PRC_START_HERB = 0.08;
+const double PRC_START_NATURE = 0.2;
 
 
 int main() {
@@ -39,6 +39,6 @@ int main() {
     for (;;){
         life_tick();
         update_screen();
-        std::this_thread::sleep_for(std::chrono::milliseconds(350));
+        std::this_thread::sleep_for(std::chrono::milliseconds(700));
     }
 }
