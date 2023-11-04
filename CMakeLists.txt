@@ -1,14 +1,10 @@
 cmake_minimum_required(VERSION 3.26)
-project(WildLifeGame)
+project(NcursesGame)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 20)
 
-include_directories(.)
-
-add_executable(WildLifeGame
-        main.cpp
+add_executable(NcursesGame main.cpp
         terminal.cpp
-        terminal.h
-        logic.cpp
         logic.h
-        emoji.h)
+        logic.cpp
+        terminal.cpp)

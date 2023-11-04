@@ -1,85 +1,91 @@
 #include <iostream>
-#include <sys/ioctl.h>
-#include <unistd.h>
 #include <vector>
-#include <utility>
+#include <map>
+#include <thread>
+
 #include "terminal.h"
+#include "ncursesw/ncurses.h"
+#include "parse.h"
 #include "logic.h"
 
-#include <ncurses.h>
-#include <map>
+
+WINDOW *game_win;
+WINDOW *pred_win;
+WINDOW *herb_win;
+WINDOW *menu;
+WINDOW *data_win;
 
 using namespace std;
 
-/* Структуры блоки */
-const string fence_vertical_left = "| ";
-const string fence_vertical_right = " |";
-const string fence_horizontal = "==";
-/* =============== */
-
-int X, Y;
-
 vector<vector<string>> screen;
 
+void draw_start_menu() {
+    clear();
 
-struct ascii_image {
-    int len_x, len_y;
-    int x, y;
-    vector<vector<string>> image;
-};
+    int yMax, xMax;
+    getmaxyx(stdscr, yMax, xMax);
 
+    paint_logo();
 
-void build_text(struct ascii_image asciiImage) {
-    for (int i = asciiImage.x; i < asciiImage.x + asciiImage.len_x; ++i) {
-        for (int j = asciiImage.y; j < asciiImage.y + asciiImage.len_y; ++j) {
-            screen[i][j] = asciiImage.image[i - asciiImage.x][j - asciiImage.y];
+   menu = newwin(6, 24, 5 * yMax / 7, xMax / 2 - 12);
+    box(menu, 0, 0);
+    keypad(menu, true);
+
+    vector<string> menubar = {
+            "Generate new world",
+            "World settings",
+            "HotKeys",
+            "Quit",
+    };
+
+    for (int i = 0; i < menubar.size(); ++i) {
+        mvwprintw(menu, i + 1, 12 - menubar[i].size() / 2, menubar[i].c_str());
+    }
+
+    refresh();
+
+    int cursor = 0;
+
+    wattron(menu, A_STANDOUT);
+    mvwprintw(menu, cursor + 1, 12 - menubar[cursor].size() / 2, menubar[cursor].c_str());
+    wattroff(menu, A_STANDOUT);
+
+    for (;;) {
+        int c = wgetch(menu);
+        if (c == KEY_UP || c == 'k') cursor--;
+        else if (c == KEY_DOWN || c == 'j') cursor++;
+        else if (c == 10) {
+            start_game();
+            break;
+        } else if (c == 27 || c == 'x') {
+            endwin();
+            break;
+        };
+
+        if (cursor <= -1) {
+            cursor = menubar.size() - 1;
+        } else if (cursor >= menubar.size()) {
+            cursor = 0;
+        }
+
+        // Рисуем выделения
+        wattron(menu, A_STANDOUT);
+        mvwprintw(menu, cursor + 1, 12 - menubar[cursor].size() / 2, menubar[cursor].c_str());
+        wattroff(menu, A_STANDOUT);
+
+        for (int i = 0; i < menubar.size(); ++i) {
+            if (cursor != i)
+                mvwprintw(menu, i + 1, 12 - menubar[i].size() / 2, menubar[i].c_str());
         }
     }
 }
 
 
-void build_fence() {
-    for (int i = 0; i < X; ++i) {
-        screen[i][0] = fence_vertical_left;
-        screen[i][Y - 1] = fence_vertical_right;
-    }
+void paint_logo() {
+    int yMax, xMax;
+    getmaxyx(stdscr, yMax, xMax);
 
-    for (int i = 0; i < Y; ++i) {
-        screen[0][i] = fence_horizontal;
-        screen[X - 1][i] = fence_horizontal;
-    }
-
-//    for (int i = 0; i < X; ++i) {
-//        screen[i][0] = (i < 10) ? " " + to_string(i) : to_string(i);
-//        screen[i][Y - 1] = fence_vertical_right;
-//    }
-//
-//    for (int i = 0; i < Y; ++i) {
-//        screen[0][i] = (i < 10) ? " " + to_string(i) : to_string(i);
-//        screen[X - 1][i] = fence_horizontal;
-//    }
-}
-
-
-void update_screen() {
-    system("clear");
-
-    for (int i = 0; i < screen.size(); i++) {
-        for (int j = 0; j < screen[i].size(); j++) {
-            cout << screen[i][j];
-        }
-        cout << endl;
-    }
-
-}
-
-void generate_ascii_logo() {
-    ascii_image logo;
-    logo.len_x = 11;
-    logo.len_y = 32;
-    logo.x = (X - logo.len_x) / 2;
-    logo.y = (Y - logo.len_y) / 2;
-    vector<string> img_v_s = {
+    vector<string> logo = {
             "                  _   _       _     _   _    __                 ",
             "      __      __ (_) | |   __| |   | | (_)  / _|   ___          ",
             "      \\ \\ /\\ / / | | | |  / _` |   | | | | | |_   / _ \\         ",
@@ -93,99 +99,103 @@ void generate_ascii_logo() {
             " |___/ |_| |_| |_| |_|  \\__,_| |_|  \\__,_|  \\__|  \\___/  |_|    ",
     };
 
-    vector<vector<string>> img_v_v_s;
-
-    for (int x = 0; x < img_v_s.size(); ++x){
-        vector<string> newline;
-        for (int i = 0; i < img_v_s[x].size(); i += 2) {
-            string box = img_v_s[x].substr(i, 2);
-            newline.push_back(box);
-        }
-        img_v_v_s.push_back(newline);
+    for (int i = 0; i < logo.size(); i++) {
+        mvprintw(yMax / 15 + i, xMax / 2 - logo[0].size() / 2, logo[i].c_str());
     }
-
-    logo.image = img_v_v_s;
-
-    build_text(logo);
-}
+};
 
 
-pair<int, int> give_terminal_size() {
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    pair<int, int> res = {w.ws_row, w.ws_col / 2};
-//    pair<int, int> res = {10, 20};
-    return res;
-}
+void start_game() {
+    clear();
 
+    int yMax, xMax;
+    getmaxyx(stdscr, yMax, xMax);
 
-void fill_screen_empty() {
-    pair<int, int> terminal_size = give_terminal_size();
-    X = terminal_size.first - 1, Y = terminal_size.second;
-    screen.clear();
-    for (int i = 0; i < X; i++) {
-        vector<string> new_row;
-        for (int j = 0; j < Y; j++) {
-            new_row.emplace_back("  ");
-        }
-        screen.push_back(new_row);
-    }
+    int startx = 8 * xMax / 10;
 
-    build_fence();
-}
+    game_win = newwin(yMax, startx - (startx % 2), 0, 0);
+    box(game_win, 0, 0);
+    wrefresh(game_win);
 
+    data_win = newwin(4, xMax - startx + (startx % 2), 0, startx);
+    box(data_win, 0, 0);
+    wrefresh(data_win);
 
-void start() {
-    pair<int, int> terminal_size = give_terminal_size();
-    X = terminal_size.first - 1, Y = terminal_size.second;
+    pred_win = newwin((yMax - 4) / 2, xMax - startx , 4, startx);
+    box(pred_win, 0, 0);
+    wrefresh(pred_win);
+
+    herb_win = newwin(yMax - (yMax - 4) / 2 - 4, xMax - startx, (yMax - 4) / 2 + 4, startx);
+    box(herb_win, 0, 0);
+    wrefresh(herb_win);
 
     fill_screen_empty();
-    generate_ascii_logo();
-    update_screen();
-}
 
-void change_pixel(int x, int y, string symbol){
-    screen[x][y] = symbol;
-}
+    set_start_objects(game_win);
+    wrefresh(game_win);
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    for (;;){
+        life_tick();
+//        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        wgetch(game_win);
+    }
+
+    wgetch(game_win);
+}
+bool screen_place_is_empty(int y, int x){
+    return screen[y][x] == "  ";
+}
+void fill_screen_empty(){
+    screen.clear();
+
+    wclear(game_win);
+    box(game_win, 0, 0);
+
+    wclear(pred_win);
+    box(pred_win, 0, 0);
+
+    int yMax, xMax;
+    getmaxyx(game_win, yMax, xMax);
+
+    for (int y = 0; y < yMax; y++){
+        vector<string> new_line;
+        for (int x = 0; x < xMax / 2; x++){
+            new_line.push_back("  ");
+        }
+        screen.push_back(new_line);
+    }
+}
 
 void update_objects(map<string, vector<struct object>> objs){
-    screen.clear();
     fill_screen_empty();
     for (const auto& obj : objs["nature"])
-        change_pixel(obj.x, obj.y, obj.emodji);
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
     for (const auto& obj : objs["tombstone"])
-        change_pixel(obj.x, obj.y, obj.emodji);
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
     for (const auto& obj : objs["herb"])
-        change_pixel(obj.x, obj.y, obj.emodji);
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
     for (const auto& obj : objs["pred"])
-        change_pixel(obj.x, obj.y, obj.emodji);
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
 }
 
 
-bool screen_place_is_empty(int x, int y){
-    if (screen[x][y] == "  ") {
-        return true;
-    } else {
-        return false;
+void update_last_object(WINDOW *win, struct object obj){
+    screen[obj.y][obj.x] = obj.emodji;
+}
+
+WINDOW* get_window(string name){
+    if (name == "game_win"){
+        return game_win;
+    } else if (name == "pred_win"){
+        return pred_win;
+    } else if (name == "herb_win"){
+        return herb_win;
+    } else if (name == "data_win"){
+        return data_win;
     }
-}
 
-void update_last_object(object obj){
-    screen[obj.x][obj.y] = obj.emodji;
-};
 
-map<string, string> hm = {
-        {"🐮", "herb"},
-        {"🐷", "herb"},
-        {"🐐", "herb"},
-        {"🦁", "pred"},
-        {"🐯", "pred"},
-        {"🌿", "nature"},
-        {"🌾", "nature"},
-        {"  ", "empty"}
-};
 
-string get_pixel(int i, int j){
-    return screen[i][j];
+    return NULL;
 }
