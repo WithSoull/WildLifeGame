@@ -2,6 +2,8 @@
 #include <map>
 #include <string>
 #include <algorithm>
+#include <ctime>
+#include <cmath>
 #include "logic.h"
 #include "terminal.h"
 
@@ -15,7 +17,7 @@ map<string, vector<struct object>> objects = {
 };
 
 void set_start_objects(WINDOW *win) {
-    int pred = 5, herb = 100, grass = 500;
+    int pred = 0, herb = 2, grass = 2;
 
     int yMax, xMax, x, y;
     getmaxyx(win, yMax, xMax);
@@ -28,6 +30,7 @@ void set_start_objects(WINDOW *win) {
         new_pred.type = "pred";
         new_pred.vision = random_number(3, 8);
         new_pred.speed = random_number(2, 3);
+        new_pred.speed = 1;
 
         set_random_free_coords(win, new_pred);
 
@@ -51,6 +54,7 @@ void set_start_objects(WINDOW *win) {
         new_herb.type = "herb";
         new_herb.vision = random_number(2, 4);
         new_herb.speed = random_number(1, 2);
+        new_herb.time_sex = 8;
 
         set_random_free_coords(win, new_herb);
         update_last_object(win, new_herb);
@@ -63,7 +67,7 @@ void set_start_objects(WINDOW *win) {
         } else {
             new_herb.emodji = "🐐";
         }
-
+        new_herb.emodji = "🐷";
         objects["herb"].push_back(new_herb);
     }
 
@@ -71,7 +75,7 @@ void set_start_objects(WINDOW *win) {
     for (int i = 0; i < grass; i++) {
         object new_nature;
         new_nature.hp = random_number(5, 10);
-        new_nature.max_hp = new_nature.hp;
+        new_nature.max_hp = new_nature.speed;
         new_nature.type = "nature";
 
         set_random_free_coords(win, new_nature);
@@ -114,7 +118,7 @@ void set_random_free_coords(WINDOW *win, struct object &obj) {
 bool object_sort_crit(const struct object &o1, const struct object &o2) {
     int o1_place = absolute_path_by_coords(o1.y, o1.x);
     int o2_place = absolute_path_by_coords(o2.y, o2.x);
-    return o1_place < o2_place;
+    return o1_place <= o2_place;
 }
 
 int absolute_path_by_coords(int y, int x) {
@@ -130,29 +134,34 @@ void sort_objects() {
     }
 }
 
-void life_tick(){
+void life_tick() {
     move_objects();
     hungryness();
     respawn_grass();
+    reload_sex_time();
     update_objects(objects);
     sort_objects();
 
     WINDOW *game_win = get_window("game_win");
     WINDOW *pred_win = get_window("pred_win");
 
+
     wrefresh(game_win);
-    wrefresh(pred_win);
+    info();
 }
 
-void move_objects(){
+void move_objects() {
     for (int i = 0; i < objects["pred"].size(); i++) {
         auto pred = objects["pred"][i];
         move_pred(i);
     }
 
+    WINDOW *herb_win = get_window("herb_win");
     for (int i = 0; i < objects["herb"].size(); i++) {
         auto herb = objects["herb"][i];
         move_herb(i);
+        mvwprintw(herb_win, 1 + i, 1, (to_string(herb.time_sex) + " " + to_string(herb.max_hp)).c_str());
+        wrefresh(herb_win);
     }
 }
 
@@ -163,22 +172,22 @@ void hungryness() {
             auto &obj = objects[p.first][i];
 
             // Вычитаем хп объектов
-            if (p.first == "tombstone"){
+            if (p.first == "tombstone") {
                 obj.hp -= 1;
             } else {
-                obj.hp -= obj.max_hp / 20;
+                obj.hp -= obj.max_hp / 40;
             }
 
             // Убиваем объект
             if (obj.hp <= 0) {
                 erase_list.push_back(i); // Далее эти элементы мы будем стирать
-                if (p.first == "herb" || p.first == "pred"){
+                if (p.first == "herb" || p.first == "pred") {
                     set_tombstone(obj.y, obj.x);
                 }
             }
         }
         // Стираем мертвые объекты
-        for (int i : erase_list){
+        for (int i: erase_list) {
             objects[p.first].erase(objects[p.first].begin() + i);
         }
     }
@@ -279,23 +288,25 @@ void move_herb(int index) {
     // === Vision area ===
     get_near_coords(herb, v, hx, hy, lx, ly);
 
-    // Добавляем в вектор всех ближайших львов
-    // Добавляем в вектор всю ближайшую траву
-    // Добавляем в вектор всю ближайшую свиней
-
     vector<struct object> preds;
     vector<struct object> grass;
     vector<struct object> herbs;
 
     for (int i = hy; i <= ly; i++) {
         for (int j = hx; j <= lx; ++j) {
-            if (!(i == herb.x && j == herb.y)) {
+            if (!(i == herb.y && j == herb.x)) {
                 if (is_object_this_type(i, j, "pred")) {
                     preds.push_back(objects["pred"][get_obj(i, j, "pred")]);
                 } else if (is_object_this_type(i, j, "nature")) {
                     grass.push_back(objects["nature"][get_obj(i, j, "nature")]);
-                } else if (is_object_this_type(i, j, "herb")) {
-                    herbs.push_back(objects["herb"][get_obj(i, j, "herb")]);
+                } else{
+                    int k = get_obj(i, j, "herb");
+                    if (k > -1){
+                        object h = objects["herb"][get_obj(i, j, "herb")];
+                        if (herb.emodji == h.emodji && h.time_sex > 30){
+                            herbs.push_back(objects["herb"][get_obj(i, j, "herb")]);
+                        }
+                    }
                 }
             }
         }
@@ -307,37 +318,46 @@ void move_herb(int index) {
 
     int max_distance_preds = 0;
     int min_distance_nature = 1000000;
+    int min_distance_herb = 1000000;
+
     vector<pair<int, int>> the_best_positions;
     int c = 1;
+    bool sex = false;
+    pair<int, int> sex_herb = {-1, -1};
     for (int i = hy; i <= ly; i++) {
         for (int j = hx; j <= lx; ++j, c++) {
-            if (!is_object_this_type(i, j, "herb")) {
-                pair<int, int> curent_pos = {i, j};
+            pair<int, int> curent_pos = {i, j};
+            if (is_object_this_type(i, j, "herb") || (i == herb.y && j == herb.x)){
+                continue;
+            }
 
-                int cur_distance_preds = 0;
-                for (const auto &pred: preds) {
-                    cur_distance_preds += max(abs(pred.x - j), abs(pred.y - i));
-                }
-                // Находим позицию где хищники дальше всего
-                if (max_distance_preds < cur_distance_preds) {
-                    max_distance_preds = cur_distance_preds;
+            int cur_distance_preds = 0;
 
-                    // Самое главное найти более выгодную позицую по хищникам,
-                    // поэтому сбрасываем инфу по траве
-                    min_distance_nature = 1000000;
-                    the_best_positions = {curent_pos};
-                }
+            for (const auto &pred: preds) {
+                cur_distance_preds += max(abs(pred.x - j), abs(pred.y - i));
+            }
 
-                    // Если в этой позиции хищники дальше всего, то
-                    // Ищем среди этих позиций ту, которая ближе всего к траве
-                else if (max_distance_preds == cur_distance_preds) {
+            // Находим позицию где хищники дальше всего
+            if (max_distance_preds < cur_distance_preds) {
+                max_distance_preds = cur_distance_preds;
+                // Самое главное найти более выгодную позицую по хищникам,
+                // поэтому сбрасываем инфу по траве
+                min_distance_nature = 1000000;
+                the_best_positions = {curent_pos};
+                sex = false;
+            }
+
+            // Если в этой позиции хищники дальше всего, то
+            // Ищем среди этих позиций ту, которая ближе всего к траве
+            else if (max_distance_preds == cur_distance_preds) {
+                if (herb.hp / herb.max_hp < 0.6) {
                     int cur_distance_nature = 0;
                     for (const auto &nature: grass) {
                         cur_distance_nature += max(abs(nature.x - j), abs(nature.y - i));
                     }
 
                     // Если можем встать на траву, встаем
-                    if (is_object_this_type(i, j, "nature") && (herb.hp / herb.max_hp < 0.8)) {
+                    if (is_object_this_type(i, j, "nature")) {
                         cur_distance_nature = 0;
                     }
 
@@ -351,6 +371,24 @@ void move_herb(int index) {
                     } else if (min_distance_nature == cur_distance_nature) {
                         the_best_positions.push_back(curent_pos);
                     }
+                } else if (herb.time_sex > 30) {
+                    // Определяем расстояние до цели
+                    int cur_distance_herb;
+                    for (const auto &another_herb: herbs) {
+                        cur_distance_herb = max(abs(another_herb.x - j), abs(another_herb.y - i));
+                        if (min_distance_herb > cur_distance_herb) {
+                            min_distance_herb = cur_distance_herb;
+                            the_best_positions = {curent_pos};
+
+                            if (cur_distance_herb == 1) {
+                                sex = true;
+                                sex_herb = {another_herb.y, another_herb.x};
+                            }
+                            // Добавляем новую, выгодную позицию
+                        } else if (min_distance_nature == cur_distance_herb) {
+                            the_best_positions.push_back(curent_pos);
+                        }
+                    }
                 }
             }
         }
@@ -363,14 +401,60 @@ void move_herb(int index) {
         herb.y = pos.first;
         herb.x = pos.second;
 
+        if (sex) {
+            int sx = sex_herb.second, sy = sex_herb.first;
+            int x = pos.second, y = pos.first;
+            int min_empty_dist = 10000;
 
-        // Если мы наступаем на траву, то кушаем ее
-        int grass_index = get_obj(herb.y, herb.x, "nature");
-        if (grass_index > -1) {
-            object grass = objects["nature"][grass_index];
-            herb.hp += grass.hp;
-            objects["nature"].erase(objects["nature"].begin() + grass_index);
+            pair<int, int> child_coords = {-1, -1};
+            // Ищем место для ребенка
+
+            for (int i = min(sy, y) - 1; i < max(sy, y) + 2; ++i) {
+                for (int j = min(sx, x) - 1; i < max(sx, x) + 2; ++i) {
+                    int cur_dist1 = (i - y) * (i - y) + (j - x) * (j - x);
+                    int cur_dist2 = (i - sy) * (i - sy) + (j - sx) * (j - sx);
+                    if (cur_dist1 + cur_dist2 < min_empty_dist
+                        && !is_object_this_type(i, j, "herb")
+                        && !is_object_this_type(i, j, "pred")) {
+                        min_empty_dist = cur_dist1 + cur_dist2;
+                        child_coords = {i, j};
+                    }
+                }
+            }
+
+            // Нашли место для ребенка
+            int parent2_index = get_obj(sy, sx, "herb");
+
+            if (child_coords.first >= 0 && parent2_index > -1){
+                object& another_herb = objects["herb"][parent2_index];
+                born_new_child(child_coords.first, child_coords.second, herb, another_herb);
+
+            } else {
+                int i, j;
+                do {
+                    i = random_number(hy, ly);
+                    j = random_number(hx, lx);
+                } while (is_object_this_type(i, j, "herb") || is_object_this_type(i, j, "pred"));
+
+                herb.x = j, herb.y = i;
+            }
         }
+    } else {
+        int i, j;
+        do {
+            i = random_number(hy, ly);
+            j = random_number(hx, lx);
+        } while (is_object_this_type(i, j, "herb") || is_object_this_type(i, j, "pred"));
+
+        herb.x = j, herb.y = i;
+    }
+
+    // Если мы наступаем на траву, то кушаем ее
+    int grass_index = get_obj(herb.y, herb.x, "nature");
+    if (grass_index > -1) {
+        object eat_grass = objects["nature"][grass_index];
+        herb.hp += eat_grass.hp;
+        objects["nature"].erase(objects["nature"].begin() + grass_index);
     }
 }
 
@@ -414,7 +498,7 @@ int get_obj(int y, int x, string type) {
     return -1;
 }
 
-void set_tombstone(int i, int j){
+void set_tombstone(int i, int j) {
     object tomb;
     tomb.y = i;
     tomb.x = j;
@@ -430,7 +514,7 @@ void respawn_grass() {
 
     double curent = (double) objects["nature"].size();
 
-    while (curent / (double) ((xMax / 2 - 1) * (yMax - 2)) < random_number(2, 12) / 100.0){
+    while (curent / (double) ((xMax / 2 - 1) * (yMax - 2)) < random_number(2, 12) / 100.0) {
         object new_nature;
         new_nature.hp = random_number(5, 10);
         new_nature.max_hp = new_nature.hp;
@@ -449,4 +533,43 @@ void respawn_grass() {
         objects["nature"].push_back(new_nature);
     }
     sort_objects();
+}
+
+void born_new_child(int y, int x, object& parent1, object& parent2){
+    object child;
+    if (parent1.hp <= 0 || parent2.hp <= 0)
+        return;
+
+    child.emodji = parent1.emodji;
+    child.x = x;
+    child.y = y;
+    child.time_sex = -10;
+    child.max_hp = (parent1.max_hp + parent2.max_hp) / 2;
+
+    child.hp = child.max_hp * 0.6;
+
+    child.speed = (parent1.speed + parent2.speed) / 2;
+//    child.speed += child.speed * random_number(-5, 5) / 100;
+
+    child.vision = (parent1.vision + parent2.vision) / 2;
+//    child.vision += child.vision * random_number(-5, 5) / 100;
+    objects["herb"].push_back(child);
+
+    parent1.time_sex = 0;
+    parent2.time_sex = 0;
+
+    sort_objects();
+}
+
+void reload_sex_time(){
+    for (auto &obj: objects["herb"]){
+        obj.time_sex++;
+    }
+}
+
+void info(){
+    WINDOW *pw = get_window("pred_win");
+    if (objects["pred"].size() > 0)
+        mvwprintw(pw, 1, 1, "%s", to_string(objects["pred"][0].hp).c_str());
+    wrefresh(pw);
 }
