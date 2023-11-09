@@ -111,11 +111,9 @@ void start_game() {
     int yMax, xMax;
     getmaxyx(stdscr, yMax, xMax);
 
-//    int startx = 8 * xMax / 10;
-    int startx = 5 * xMax / 10;
+    int startx = 8 * xMax / 10;
 
-//    game_win = newwin(yMax, startx - (startx % 2), 0, 0);
-    game_win = newwin(5, 20, 0, 0);
+    game_win = newwin(yMax, startx - (startx % 2), 0, 0);
     box(game_win, 0, 0);
     wrefresh(game_win);
 

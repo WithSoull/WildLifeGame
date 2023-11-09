@@ -52,8 +52,6 @@ object generateNewAnimal(string type) {
             new_herb.emodji = "🐐";
         }
 
-        new_herb.emodji = "🐷";
-
         return new_herb;
 
         // if (type == "nature")
@@ -75,7 +73,7 @@ object generateNewAnimal(string type) {
 }
 
 void set_start_objects(WINDOW *win) {
-    int pred = 0, herb = 1, grass = 3;
+    int pred = 20, herb = 100, grass = 200;
 
     int yMax, xMax, x, y;
     getmaxyx(win, yMax, xMax);
@@ -118,6 +116,8 @@ void set_start_objects(WINDOW *win) {
 }
 
 void born_childs() {
+    const int SEX_TIME = 15;
+
     WINDOW *win = get_window("game_win");
     vector<struct object> animals;
     for (auto p: objects) {
@@ -128,16 +128,8 @@ void born_childs() {
         }
     }
 
-    // =======
-    WINDOW *pred_win = get_window("pred_win");
-    wclear(pred_win);
-    mvwprintw(pred_win, 1, 1, ("All animals: " + to_string(animals.size())).c_str());
-
-    // =======
-
     for (auto &animal: animals) {
-        mvwprintw(pred_win, 2, 1, ("Time sex of curent animal: " + to_string(animal.time_sex)).c_str());
-        if (animal.time_sex < 30) {
+        if (animal.time_sex < SEX_TIME) {
             continue;
         }
         int hx, hy, lx, ly;
@@ -153,7 +145,7 @@ void born_childs() {
 
                     if (index > -1) {
                         object &another_animal = objects[animal.type][index];
-                        if (another_animal.emodji == animal.emodji && another_animal.time_sex >= 30)
+                        if (another_animal.emodji == animal.emodji && another_animal.time_sex >= SEX_TIME)
                             this_type_animals.push_back(pos);
                     } else if (screen_place_is_empty(i, j)) {
                         empty_places.push_back(pos);
@@ -161,13 +153,6 @@ void born_childs() {
                 }
             }
         }
-
-        // =======
-        mvwprintw(pred_win, 3, 1, ("This type animals size: " + to_string(this_type_animals.size())).c_str());
-        mvwprintw(pred_win, 4, 1, ("Пустых мест рядом: " + to_string(empty_places.size())).c_str());
-        mvwprintw(pred_win, 5, 1, ("Коэфицент заселения: " + to_string(this_type_animals.size() / (double) empty_places.size())).c_str());
-
-        // =======
 
         if (!empty_places.empty()) {
             if (this_type_animals.size() / (double) empty_places.size() < 0.8 && this_type_animals.size() > 1) {
@@ -194,7 +179,6 @@ void born_childs() {
         empty_places.clear();
     }
     animals.clear();
-    wrefresh(pred_win);
 }
 
 int random_number(int a, int b) {
@@ -238,8 +222,8 @@ void sort_objects() {
 
 void life_tick() {
     move_objects();
-//    hungryness();
-//    respawn_grass();
+    hungryness();
+    respawn_grass();
 
 
     sort_objects();
@@ -297,10 +281,6 @@ void move_pred(int index) {
     int d = pred.speed;
 
     WINDOW *game_win = get_window("game_win");
-
-    WINDOW *pred_win = get_window("pred_win");
-    wclear(pred_win);
-    wrefresh(pred_win);
 
     int hx, hy, lx, ly;
 
