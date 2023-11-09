@@ -37,9 +37,9 @@ void move_herb(int index);
 
 void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly);
 
-bool is_object_this_type(int y, int x, std::string type);
+bool is_object_this_type(int x, int y, std::string type);
 
-int get_obj(int y, int x, std::string type);
+int get_obj(int x, int y, std::string type);
 
 void set_tombstone(int i, int j);
 
@@ -47,8 +47,6 @@ void hungryness();
 
 void respawn_grass();
 
-void reload_sex_time();
+void born_childs();
 
-void born_new_child(int y, int x, object& parent1, object& parent2);
-
-void info();
+void update_time_sex();

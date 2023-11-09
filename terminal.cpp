@@ -27,7 +27,7 @@ void draw_start_menu() {
 
     paint_logo();
 
-   menu = newwin(6, 24, 5 * yMax / 7, xMax / 2 - 12);
+    menu = newwin(6, 24, 5 * yMax / 7, xMax / 2 - 12);
     box(menu, 0, 0);
     keypad(menu, true);
 
@@ -39,7 +39,7 @@ void draw_start_menu() {
     };
 
     for (int i = 0; i < menubar.size(); ++i) {
-        mvwprintw(menu, i + 1, 12 - menubar[i].size() / 2, "%s", menubar[i].c_str());
+        mvwprintw(menu, i + 1, 12 - menubar[i].size() / 2, menubar[i].c_str());
     }
 
     refresh();
@@ -47,7 +47,7 @@ void draw_start_menu() {
     int cursor = 0;
 
     wattron(menu, A_STANDOUT);
-    mvwprintw(menu, cursor + 1, 12 - menubar[cursor].size() / 2, "%s", menubar[cursor].c_str());
+    mvwprintw(menu, cursor + 1, 12 - menubar[cursor].size() / 2, menubar[cursor].c_str());
     wattroff(menu, A_STANDOUT);
 
     for (;;) {
@@ -70,12 +70,12 @@ void draw_start_menu() {
 
         // Рисуем выделения
         wattron(menu, A_STANDOUT);
-        mvwprintw(menu, cursor + 1, 12 - menubar[cursor].size() / 2, "%s", menubar[cursor].c_str());
+        mvwprintw(menu, cursor + 1, 12 - menubar[cursor].size() / 2, menubar[cursor].c_str());
         wattroff(menu, A_STANDOUT);
 
         for (int i = 0; i < menubar.size(); ++i) {
             if (cursor != i)
-                mvwprintw(menu, i + 1, 12 - menubar[i].size() / 2, "%s", menubar[i].c_str());
+                mvwprintw(menu, i + 1, 12 - menubar[i].size() / 2, menubar[i].c_str());
         }
     }
 }
@@ -100,7 +100,7 @@ void paint_logo() {
     };
 
     for (int i = 0; i < logo.size(); i++) {
-        mvprintw(yMax / 15 + i, xMax / 2 - logo[0].size() / 2, "%s", logo[i].c_str());
+        mvprintw(yMax / 15 + i, xMax / 2 - logo[0].size() / 2, logo[i].c_str());
     }
 };
 
@@ -111,9 +111,10 @@ void start_game() {
     int yMax, xMax;
     getmaxyx(stdscr, yMax, xMax);
 
-    int startx = 8 * xMax / 10;
+//    int startx = 8 * xMax / 10;
+    int startx = 5 * xMax / 10;
 
-    game_win = newwin(yMax, startx - (startx % 2), 0, 0);
+//    game_win = newwin(yMax, startx - (startx % 2), 0, 0);
     game_win = newwin(5, 20, 0, 0);
     box(game_win, 0, 0);
     wrefresh(game_win);
@@ -135,18 +136,25 @@ void start_game() {
     set_start_objects(game_win);
     wrefresh(game_win);
 
+
+
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     for (;;){
         life_tick();
+
 //        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+
         wgetch(game_win);
     }
 
     wgetch(game_win);
 }
+
 bool screen_place_is_empty(int y, int x){
     return screen[y][x] == "  ";
 }
+
 void fill_screen_empty(){
     screen.clear();
 
@@ -171,13 +179,13 @@ void fill_screen_empty(){
 void update_objects(map<string, vector<struct object>> objs){
     fill_screen_empty();
     for (const auto& obj : objs["nature"])
-        mvwprintw(game_win, obj.y, obj.x * 2 + 1, "%s", obj.emodji.c_str());
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
     for (const auto& obj : objs["tombstone"])
-        mvwprintw(game_win, obj.y, obj.x * 2 + 1, "%s", obj.emodji.c_str());
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
     for (const auto& obj : objs["herb"])
-        mvwprintw(game_win, obj.y, obj.x * 2 + 1, "%s", obj.emodji.c_str());
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
     for (const auto& obj : objs["pred"])
-        mvwprintw(game_win, obj.y, obj.x * 2 + 1, "%s", obj.emodji.c_str());
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
 }
 
 
@@ -195,8 +203,5 @@ WINDOW* get_window(string name){
     } else if (name == "data_win"){
         return data_win;
     }
-
-
-
     return NULL;
 }
