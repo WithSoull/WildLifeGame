@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <ctime>
 #include "logic.h"
+#include "parse.h"
 #include "terminal.h"
 
 using namespace std;
@@ -73,10 +74,14 @@ object generateNewAnimal(string type) {
 }
 
 void set_start_objects(WINDOW *win) {
-    int pred = 20, herb = 100, grass = 200;
-
     int yMax, xMax, x, y;
     getmaxyx(win, yMax, xMax);
+
+    int square = (yMax - 2) * (xMax - 2);
+
+    int pred = get_settings()[0] * square / 100;
+    int herb = get_settings()[1] * square / 100;
+    int grass = get_settings()[2] * square / 100;
 
     // pred
     for (int i = 0; i < pred; i++) {
@@ -168,7 +173,7 @@ void born_childs() {
                 int second_parent_index = random_number(0, this_type_animals.size() - 1);
                 int second_parent_y = this_type_animals[second_parent_index].first;
                 int second_parent_x = this_type_animals[second_parent_index].second;
-                object& second_parent = objects[animal.type][get_obj(second_parent_y, second_parent_x, animal.type)];
+                object &second_parent = objects[animal.type][get_obj(second_parent_y, second_parent_x, animal.type)];
 
                 animal.time_sex = 0;
                 second_parent.time_sex = 0;
@@ -516,7 +521,8 @@ void respawn_grass() {
 
     double curent = (double) objects["nature"].size();
 
-    while (curent / (double) ((xMax / 2 - 1) * (yMax - 2)) < random_number(2, 12) / 100.0) {
+    int r = get_settings()[3];
+    while (curent / (double) ((xMax / 2 - 1) * (yMax - 2)) < random_number(r - 5, r + 5) / 100.0) {
         object new_nature;
         new_nature.hp = random_number(5, 10);
         new_nature.max_hp = new_nature.hp;
@@ -538,8 +544,8 @@ void respawn_grass() {
 }
 
 
-void update_time_sex(){
-    for (auto& object: objects["herb"]){
+void update_time_sex() {
+    for (auto &object: objects["herb"]) {
         object.time_sex++;
     }
 //    for (auto& object: objects["pred"]){

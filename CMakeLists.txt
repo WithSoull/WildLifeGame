@@ -7,4 +7,5 @@ add_executable(NcursesGame main.cpp
         terminal.cpp
         logic.h
         logic.cpp
-        terminal.cpp)
+        terminal.cpp
+        parse.cpp)

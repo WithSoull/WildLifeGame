@@ -9,7 +9,6 @@
 
 int main(){
     srand(time(0));
-    resize_term(5, 5);
     setlocale(LC_ALL, "");
 
     initscr();
@@ -18,7 +17,7 @@ int main(){
     start_color();
     curs_set(0);
 
-    draw_start_menu();
+    draw_start_menu(0);
 
     getch();
     endwin();

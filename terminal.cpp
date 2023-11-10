@@ -19,7 +19,7 @@ using namespace std;
 
 vector<vector<string>> screen;
 
-void draw_start_menu() {
+void draw_start_menu(int cursor = 0) {
     clear();
 
     int yMax, xMax;
@@ -44,8 +44,6 @@ void draw_start_menu() {
 
     refresh();
 
-    int cursor = 0;
-
     wattron(menu, A_STANDOUT);
     mvwprintw(menu, cursor + 1, 12 - menubar[cursor].size() / 2, menubar[cursor].c_str());
     wattroff(menu, A_STANDOUT);
@@ -55,7 +53,15 @@ void draw_start_menu() {
         if (c == KEY_UP || c == 'k') cursor--;
         else if (c == KEY_DOWN || c == 'j') cursor++;
         else if (c == 10) {
-            start_game();
+            if (cursor == 0) {
+                if (check()) {
+                    start_game();
+                } else {
+                    start_parse();
+                }
+            }
+            if (cursor == 1) start_parse();
+            if (cursor == 3) endwin();
             break;
         } else if (c == 27 || c == 'x') {
             endwin();
@@ -121,7 +127,7 @@ void start_game() {
     box(data_win, 0, 0);
     wrefresh(data_win);
 
-    pred_win = newwin((yMax - 4) / 2, xMax - startx , 4, startx);
+    pred_win = newwin((yMax - 4) / 2, xMax - startx, 4, startx);
     box(pred_win, 0, 0);
     wrefresh(pred_win);
 
@@ -135,9 +141,8 @@ void start_game() {
     wrefresh(game_win);
 
 
-
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    for (;;){
+    for (;;) {
         life_tick();
 
 //        std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -149,11 +154,11 @@ void start_game() {
     wgetch(game_win);
 }
 
-bool screen_place_is_empty(int y, int x){
+bool screen_place_is_empty(int y, int x) {
     return screen[y][x] == "  ";
 }
 
-void fill_screen_empty(){
+void fill_screen_empty() {
     screen.clear();
 
     wclear(game_win);
@@ -165,40 +170,40 @@ void fill_screen_empty(){
     int yMax, xMax;
     getmaxyx(game_win, yMax, xMax);
 
-    for (int y = 0; y < yMax; y++){
+    for (int y = 0; y < yMax; y++) {
         vector<string> new_line;
-        for (int x = 0; x < xMax / 2; x++){
+        for (int x = 0; x < xMax / 2; x++) {
             new_line.push_back("  ");
         }
         screen.push_back(new_line);
     }
 }
 
-void update_objects(map<string, vector<struct object>> objs){
+void update_objects(map<string, vector<struct object>> objs) {
     fill_screen_empty();
-    for (const auto& obj : objs["nature"])
+    for (const auto &obj: objs["nature"])
         mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
-    for (const auto& obj : objs["tombstone"])
+    for (const auto &obj: objs["tombstone"])
         mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
-    for (const auto& obj : objs["herb"])
+    for (const auto &obj: objs["herb"])
         mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
-    for (const auto& obj : objs["pred"])
+    for (const auto &obj: objs["pred"])
         mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
 }
 
 
-void update_last_object(WINDOW *win, struct object obj){
+void update_last_object(WINDOW *win, struct object obj) {
     screen[obj.y][obj.x] = obj.emodji;
 }
 
-WINDOW* get_window(string name){
-    if (name == "game_win"){
+WINDOW *get_window(string name) {
+    if (name == "game_win") {
         return game_win;
-    } else if (name == "pred_win"){
+    } else if (name == "pred_win") {
         return pred_win;
-    } else if (name == "herb_win"){
+    } else if (name == "herb_win") {
         return herb_win;
-    } else if (name == "data_win"){
+    } else if (name == "data_win") {
         return data_win;
     }
     return NULL;

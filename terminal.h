@@ -6,7 +6,7 @@
 
 #include "ncursesw/ncurses.h"
 
-void draw_start_menu();
+void draw_start_menu(int cursor);
 
 void start_game();
 
@@ -21,3 +21,5 @@ void update_last_object(WINDOW *win, struct object obj);
 void update_objects(std::map<std::string, std::vector<struct object>> objs);
 
 WINDOW* get_window(std::string name);
+
+void update_file_values();
