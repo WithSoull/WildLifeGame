@@ -3,19 +3,24 @@
 #include <string>
 #include <algorithm>
 #include <ctime>
+#include <cmath>
 #include "logic.h"
 #include "parse.h"
 #include "terminal.h"
 
 using namespace std;
 
+int DAY = 1;
+int count_herb = 0;
+int count_grass = 0;
+
 map<string, vector<struct object>> objects = {
         {"herb",      vector<struct object>{}},
         {"pred",      vector<struct object>{}},
         {"nature",    vector<struct object>{}},
         {"tombstone", vector<struct object>{}},
+        {"light",     vector<struct object>{}},
 };
-
 
 object generateNewAnimal(string type) {
     if (type == "pred") {
@@ -23,14 +28,14 @@ object generateNewAnimal(string type) {
         new_pred.hp = random_number(60, 80);
         new_pred.max_hp = random_number(80, 120);
         new_pred.type = "pred";
-        new_pred.vision = random_number(3, 8);
-        new_pred.speed = random_number(2, 3);
+        new_pred.vision = random_number(2, 6);
+        new_pred.speed = random_number(1, 4);
         new_pred.time_sex = 0;
 
         if (random_number(1, 2) % 2 == 0) {
-            new_pred.emodji = "🦁";
+            new_pred.emodji = "🐅";
         } else {
-            new_pred.emodji = "🐯";
+            new_pred.emodji = "🐆";
         }
 
         return new_pred;
@@ -46,11 +51,11 @@ object generateNewAnimal(string type) {
 
         int r = random_number(1, 3);
         if (r % 3 == 0) {
-            new_herb.emodji = "🐮";
+            new_herb.emodji = "🐄";
         } else if (r % 3 == 1) {
-            new_herb.emodji = "🐷";
+            new_herb.emodji = "🐖";
         } else {
-            new_herb.emodji = "🐐";
+            new_herb.emodji = "🐂";
         }
 
         return new_herb;
@@ -62,22 +67,27 @@ object generateNewAnimal(string type) {
         new_nature.max_hp = new_nature.hp;
         new_nature.type = "nature";
 
-        if (random_number(1, 2) % 2 == 0) {
+        int r = random_number(1, 4);
+        if (r == 1) {
             new_nature.emodji = "🌿";
-        } else {
-            new_nature.emodji = "🌾";
+        } else if (r == 2){
+            new_nature.emodji = "🌱";
+        } else if (r == 3) {
+            new_nature.emodji = "🍀";
+        } else if (r == 4) {
+            new_nature.emodji = "🍃";
         }
 
         return new_nature;
     }
-
 }
 
 void set_start_objects(WINDOW *win) {
+    DAY = 1;
     int yMax, xMax, x, y;
     getmaxyx(win, yMax, xMax);
 
-    int square = (yMax - 2) * (xMax - 2);
+    int square = (yMax - 2) * (xMax / 2 - 2);
 
     int pred = get_settings()[0] * square / 100;
     int herb = get_settings()[1] * square / 100;
@@ -121,8 +131,7 @@ void set_start_objects(WINDOW *win) {
 }
 
 void born_childs() {
-    const int SEX_TIME = 15;
-
+    const int SEX_TIME = 30;
     WINDOW *win = get_window("game_win");
     vector<struct object> animals;
     for (auto p: objects) {
@@ -134,7 +143,7 @@ void born_childs() {
     }
 
     for (auto &animal: animals) {
-        if (animal.time_sex < SEX_TIME) {
+        if (animal.time_sex < SEX_TIME || (animal.type == "pred" && animal.time_sex < 2 * SEX_TIME)) {
             continue;
         }
         int hx, hy, lx, ly;
@@ -160,7 +169,7 @@ void born_childs() {
         }
 
         if (!empty_places.empty()) {
-            if (this_type_animals.size() / (double) empty_places.size() < 0.8 && this_type_animals.size() > 1) {
+            if (this_type_animals.size() < 5 && this_type_animals.size() > 1) {
                 int child_pos_index = random_number(0, empty_places.size() - 1);
                 object child = generateNewAnimal(animal.type);
                 child.y = empty_places[child_pos_index].first;
@@ -226,29 +235,100 @@ void sort_objects() {
 }
 
 void life_tick() {
+    srand(time(0));
+
     move_objects();
+    generate_lightning_strike();
     hungryness();
     respawn_grass();
-
-
+    update_day();
     sort_objects();
 
+    update_counts();
     born_childs();
     sort_objects();
     update_time_sex();
     update_objects(objects);
 }
 
-void move_objects() {
-    for (int i = 0; i < objects["pred"].size(); i++) {
-        auto pred = objects["pred"][i];
-        move_pred(i);
-    }
+int get_animal_count() {
+    return objects["herb"].size() + objects["pred"].size();
+}
 
-    for (int i = 0; i < objects["herb"].size(); i++) {
-        auto herb = objects["herb"][i];
-        move_herb(i);
+void update_counts() {
+    int h = objects["herb"].size();
+    int p = objects["pred"].size();
+    int n = objects["nature"].size();
+    WINDOW *w = get_window("data_win");
+
+    wclear(w);
+    box(w, 0, 0);
+
+    int yMaxS, xMaxS;
+    getmaxyx(w, yMaxS, xMaxS);
+
+    wattron(w, COLOR_PAIR(2));
+    mvwprintw(w, 1, xMaxS / 5, ("Preadators: " + to_string(p)).c_str());
+    wattroff(w, COLOR_PAIR(2));
+
+    wattron(w, COLOR_PAIR(3));
+    mvwprintw(w, 1, 2 * xMaxS / 5, ("Herbivores: " + to_string(h)).c_str());
+    wattroff(w, COLOR_PAIR(3));
+
+    wattron(w, COLOR_PAIR(1));
+    mvwprintw(w, 1, 3 * xMaxS / 5, ("Grass: " + to_string(n)).c_str());
+    wattroff(w, COLOR_PAIR(1));
+
+}
+
+void generate_lightning_strike() {
+    int r = random_number(1, 100);
+    WINDOW *win = get_window("game_win");
+    if (r <= get_settings()[4]) {
+        int yMax, xMax;
+        getmaxyx(win, yMax, xMax);
+        int y = random_number(1, yMax - 1);
+        int x = random_number(1, xMax - 1) / 2;
+
+        int hx, hy, lx, ly;
+        int r = random_number(2, 5);
+        get_near_coords(y, x, r, hx, hy, lx, ly);
+
+        for (int i = hy; i <= ly; i++) {
+            for (int j = hx; j <= lx; j++) {
+                if ((i - y) * (i - y) + (j - x) * (j - x) <= r * r) {
+                    int index;
+                    index = get_obj(i, j, "herb");
+                    if (index > -1)
+                        objects["herb"].erase(objects["herb"].begin() + i);
+
+                    index = get_obj(i, j, "pred");
+                    if (index > -1)
+                        objects["pred"].erase(objects["pred"].begin() + i);
+
+                    index = get_obj(i, j, "nature");
+                    if (index > -1)
+                        objects["nature"].erase(objects["nature"].begin() + i);
+
+                    object light;
+                    light.hp = 5 + random_number(1, 4);
+                    light.max_hp = light.hp;
+                    light.type = "light";
+                    light.x = j;
+                    light.y = i;
+                    int r = random_number(1, 3);
+                    if (r == 1) light.emodji = "💥";
+                    else light.emodji = "⚡";
+                    objects["light"].push_back(light);
+                }
+            }
+        }
     }
+}
+
+void move_objects() {
+    for (int i = 0; i < objects["pred"].size(); i++) move_pred(i);
+    for (int i = 0; i < objects["herb"].size(); i++) move_herb(i);
 }
 
 void hungryness() {
@@ -258,7 +338,7 @@ void hungryness() {
             auto &obj = objects[p.first][i];
 
             // Вычитаем хп объектов
-            if (p.first == "tombstone") {
+            if (p.first == "tombstone" || p.first == "tombstone") {
                 obj.hp -= 1;
             } else {
                 obj.hp -= obj.max_hp / 20;
@@ -402,7 +482,7 @@ void move_herb(int index) {
     int c = 1;
     for (int i = hy; i <= ly; i++) {
         for (int j = hx; j <= lx; ++j, c++) {
-            if (!is_object_this_type(i, j, "herb")) {
+            if (!is_object_this_type(i, j, "herb") && !is_object_this_type(i, j, "light")) {
                 pair<int, int> curent_pos = {i, j};
 
                 int cur_distance_preds = 0;
@@ -479,6 +559,20 @@ void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly) {
     ly = min(tly, obj.y + v);
 }
 
+void get_near_coords(int y, int x, int v, int &hx, int &hy, int &lx, int &ly) {
+    WINDOW *game_win = get_window("game_win");
+    int yMax, xMax;
+    getmaxyx(game_win, yMax, xMax);
+
+    int thx = 0, thy = 1;
+    int tlx = xMax / 2 - 2, tly = yMax - 2;
+
+    hx = max(thx, x - v);
+    hy = max(thy, y - v);
+    lx = min(tlx, x + v);
+    ly = min(tly, y + v);
+}
+
 bool is_object_this_type(int y, int x, string type) {
     if (get_obj(y, x, type) > -1) {
         return true;
@@ -521,12 +615,16 @@ void respawn_grass() {
 
     double curent = (double) objects["nature"].size();
 
+    int square = (xMax / 2 - 2) * (yMax - 2);
+
     int r = get_settings()[3];
-    while (curent / (double) ((xMax / 2 - 1) * (yMax - 2)) < random_number(r - 5, r + 5) / 100.0) {
-        object new_nature;
-        new_nature.hp = random_number(5, 10);
-        new_nature.max_hp = new_nature.hp;
-        new_nature.type = "nature";
+
+    while (curent / (double) ((xMax / 2 - 2) * (yMax - 2)) < random_number(r - 5, r + 5) / 100.0) {
+        int all_objects_count = objects["herb"].size() + objects["pred"].size() + objects["nature"].size();
+//        if (all_objects_count >= square){
+//            break;
+//        }
+        object new_nature = generateNewAnimal("nature");
 
         set_random_free_coords(game_win, new_nature);
         update_last_object(game_win, new_nature);
@@ -534,7 +632,7 @@ void respawn_grass() {
         if (random_number(1, 2) % 2 == 0) {
             new_nature.emodji = "🌿";
         } else {
-            new_nature.emodji = "🌾";
+            new_nature.emodji = "🌱";
         }
         curent++;
 
@@ -548,7 +646,46 @@ void update_time_sex() {
     for (auto &object: objects["herb"]) {
         object.time_sex++;
     }
-//    for (auto& object: objects["pred"]){
-//        object.time_sex++;
-//    }
+    for (auto &object: objects["pred"]) {
+        object.time_sex++;
+    }
+}
+
+void update_day() {
+    WINDOW *w = get_window("data_win");
+    int yMax, xMax;
+    getmaxyx(w, yMax, xMax);
+
+    mvwprintw(w, 1, 1, get_date().c_str());
+    string txt = "Day - " + to_string(DAY);
+    mvwprintw(w, 1, xMax - txt.size() - 2, txt.c_str());
+
+    wrefresh(w);
+
+    DAY += 1;
+}
+
+string get_date() {
+    int num = DAY;
+    int mas[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int m, y = 1;
+    while (num > 365) {
+        num -= 365;
+        y += 1;
+    }
+    for (m = 1; num > mas[m - 1]; m++)
+        num -= mas[m - 1];
+
+    string res = "";
+
+    if (to_string(num).size() == 1) res += "0";
+    res += to_string(num) + ".";
+
+    if (to_string(m).size() == 1) res += "0";
+    res += to_string(m) + ".";
+
+    if (to_string(y).size() == 1) res += "0";
+    res += to_string(y);
+
+    return res;
 }

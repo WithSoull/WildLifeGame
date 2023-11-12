@@ -37,6 +37,8 @@ void move_herb(int index);
 
 void get_near_coords(object obj, int v, int &hx, int &hy, int &lx, int &ly);
 
+void get_near_coords(int x, int y, int v, int &hx, int &hy, int &lx, int &ly);
+
 bool is_object_this_type(int x, int y, std::string type);
 
 int get_obj(int x, int y, std::string type);
@@ -50,3 +52,13 @@ void respawn_grass();
 void born_childs();
 
 void update_time_sex();
+
+void update_day();
+
+std::string get_date();
+
+void generate_lightning_strike();
+
+void update_counts();
+
+int get_animal_count();

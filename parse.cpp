@@ -11,13 +11,15 @@ WINDOW *settings_win;
 
 using namespace std;
 
-vector<int> SETTINGS = {0, 0, 0, 0};
+vector<int> SETTINGS = {0, 0, 0, 0, 0, 0};
 
 vector<string> NAMES = {
-        "Percentage of predators    ",
-        "Percentage of herbivores   ",
-        "Percentage of grass        ",
-        "Percentage of grass respawn",
+        "Percentage of predators       ",
+        "Percentage of herbivores      ",
+        "Percentage of grass           ",
+        "Percentage of grass respawn   ",
+        "Percentage of lightning strike",
+        "Speed (1 - 99)                ",
 };
 
 vector<string> menubar;
@@ -36,6 +38,8 @@ void start_parse() {
     int X = 2 * Y;
     settings_win = newwin(yMax - 2 * Y, xMax - 4 * X, Y, 2 * X);
     keypad(settings_win, TRUE);
+    wclear(settings_win);
+    menubar.clear();
     box(settings_win, 0, 0);
 
     change_NAMES_size_for_this_window();
@@ -56,9 +60,7 @@ void start_parse() {
     int cursor = -1;
     update_menu(cursor);
 
-    init_color(COLOR_GREEN, 400, 750, 202);
-    init_pair(1, COLOR_GREEN, COLOR_BLACK);
-    init_pair(2, COLOR_RED, COLOR_BLACK);
+
 
 
     if (!check()) print_warning();
@@ -207,6 +209,7 @@ void update_menu(int cursor) {
 bool check() {
     parse_from_file();
     if (SETTINGS[0] + SETTINGS[1] + SETTINGS[2] > 100) return false;
+    if (SETTINGS[3] >= 100 || SETTINGS[4] >= 100) return false;
     return true;
 }
 

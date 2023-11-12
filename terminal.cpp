@@ -10,8 +10,6 @@
 
 
 WINDOW *game_win;
-WINDOW *pred_win;
-WINDOW *herb_win;
 WINDOW *menu;
 WINDOW *data_win;
 
@@ -27,14 +25,13 @@ void draw_start_menu(int cursor = 0) {
 
     paint_logo();
 
-    menu = newwin(6, 24, 5 * yMax / 7, xMax / 2 - 12);
+    menu = newwin(5, 24, 5 * yMax / 7, xMax / 2 - 12);
     box(menu, 0, 0);
     keypad(menu, true);
 
     vector<string> menubar = {
             "Generate new world",
             "World settings",
-            "HotKeys",
             "Quit",
     };
 
@@ -117,41 +114,30 @@ void start_game() {
     int yMax, xMax;
     getmaxyx(stdscr, yMax, xMax);
 
-    int startx = 8 * xMax / 10;
-
-    game_win = newwin(yMax, startx - (startx % 2), 0, 0);
+    game_win = newwin(yMax - 3, xMax - xMax % 2, 0, 0);
     box(game_win, 0, 0);
     wrefresh(game_win);
 
-    data_win = newwin(4, xMax - startx + (startx % 2), 0, startx);
+    data_win = newwin(3, xMax - xMax % 2, yMax - 3, 0);
     box(data_win, 0, 0);
     wrefresh(data_win);
-
-    pred_win = newwin((yMax - 4) / 2, xMax - startx, 4, startx);
-    box(pred_win, 0, 0);
-    wrefresh(pred_win);
-
-    herb_win = newwin(yMax - (yMax - 4) / 2 - 4, xMax - startx, (yMax - 4) / 2 + 4, startx);
-    box(herb_win, 0, 0);
-    wrefresh(herb_win);
 
     fill_screen_empty();
 
     set_start_objects(game_win);
     wrefresh(game_win);
 
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    for (;;) {
+    int end = 0;
+    for (;end < 10;) {
         life_tick();
-
-//        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-
-        wgetch(game_win);
+        int sec = (99 - get_settings()[5]) * 20;
+        std::this_thread::sleep_for(std::chrono::milliseconds(sec));
+        if (get_animal_count() == 0){
+            end ++;
+        }
     }
+    draw_start_menu();
 
-    wgetch(game_win);
 }
 
 bool screen_place_is_empty(int y, int x) {
@@ -163,9 +149,6 @@ void fill_screen_empty() {
 
     wclear(game_win);
     box(game_win, 0, 0);
-
-    wclear(pred_win);
-    box(pred_win, 0, 0);
 
     int yMax, xMax;
     getmaxyx(game_win, yMax, xMax);
@@ -189,8 +172,11 @@ void update_objects(map<string, vector<struct object>> objs) {
         mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
     for (const auto &obj: objs["pred"])
         mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
-}
+    for (const auto &obj: objs["light"])
+        mvwprintw(game_win, obj.y, obj.x * 2 + 1, obj.emodji.c_str());
 
+    wrefresh(game_win);
+}
 
 void update_last_object(WINDOW *win, struct object obj) {
     screen[obj.y][obj.x] = obj.emodji;
@@ -199,10 +185,6 @@ void update_last_object(WINDOW *win, struct object obj) {
 WINDOW *get_window(string name) {
     if (name == "game_win") {
         return game_win;
-    } else if (name == "pred_win") {
-        return pred_win;
-    } else if (name == "herb_win") {
-        return herb_win;
     } else if (name == "data_win") {
         return data_win;
     }
